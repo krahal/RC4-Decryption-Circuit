@@ -1,0 +1,46 @@
+module FSM1c (
+input logic start,
+input logic clk,
+output logic finished
+);
+
+parameter [2:0] idle 		= 3'b000;
+parameter [2:0] write 		= 3'b001;
+parameter [2:0] increment  = 3'b011;
+parameter [2:0] finish 	   = 3'b111; 
+
+logic [2:0] state;
+logic [7:0] counter; // 255 = 1111_1111
+
+always_ff @(posedge clk)
+  begin
+	if (start == 1'b1) begin
+	  state <= write; 
+     counter <= 8'b0000_0000;
+	end
+	else begin
+	 case (state) 
+	 idle:		state <= idle;
+	 write:		if (counter == 255) begin
+					state <= finished;
+					s[counter] <= counter; 
+					end
+					else begin
+					state <= increment;
+					s[counter] <= counter;
+					end
+	 increment: counter <= counter + 1;
+	 finish:		state <= finish;
+	 default:	begin
+					state <= idle;
+					counter <= 8'b0000_0000;
+					end
+	endcase
+	end
+  end
+  
+always_comb
+ begin
+ finished = state[2];
+ end
+endmodule

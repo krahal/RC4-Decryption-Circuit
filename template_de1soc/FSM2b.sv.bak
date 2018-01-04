@@ -1,0 +1,130 @@
+module FSM2b (
+input logic clk,							// Clock
+input logic task2b_start,				// FSM2a sends a finish signal to start this FSM
+input logic [9:0] SW,					// Switches
+input logic [7:0] mem_data,			// Q from RAM1
+
+output logic [7:0] address_out,		// Sends to RAM for Q or for write
+output logic [7:0] data_out,			// Sends to RAM for rewriting data_out
+output logic write_out,					// wren, 0 or 1 for read and write
+output logic done							// Signalling that it is done and onto the next FSM
+
+// I/O for ROM and Second RAM 
+input logic [7:0] ROM_data,			// Data from ROM
+output logic [4:0] address_ROM,		// Sends to ROM for data @ address 
+
+output logic [4:0] address_out1,		// Sends to Second RAM for Q or for write
+output logic [7:0] data_out1,			// Sends to Second RAM for rewriting data_out
+output logic write_out1					// wren for decrypted message RAM
+);
+
+// State Parameter
+parameter [] IDLE = ;
+
+logic [2:0] key_mod;		// Variable for mod
+//logic [4:0] state;		// State variable
+logic [4:0] k_index; 	// k index value
+logic [7:0] j_index;		// j index value	
+logic [7:0] saved_si;	// Saving value of s[i]
+logic [7:0] saved_sj; 	// Saving value of s[j]
+logic [8:0] i_index; 	// 255 = 0_1111_1111 also i (this was counter before)
+logic [23:0] scrt_key;	// Done with SWITCHES
+
+logic [7:0] f; 			// From loop
+
+assign scrt_key = {14'b0, SW};
+ 
+always_ff @(posedge clk)
+	begin
+	if (!task2b_start) begin
+					state <= IDLE;
+					i_index <= 9'b0_0000_0000;
+					j_index <= 8'b0000_0000;
+					k_index <= 5'b0_0000;
+				
+					address_out <= 8'b0000_0000;
+					data_out <= 8'b0000_0000;
+					write_out <= 1'b0;
+					
+					address_ROM <= 5'b0_0000;
+					
+					address_out1 <= 5'b0_0000;
+					data_out1 <= 8'b0000_0000;
+					write_out1 <= 1'b0;
+					
+					done <= 1'b0;
+					end
+	else
+	 begin
+	 case (state) 
+	 IDLE:		begin
+					state <= INC1;
+					i_index <= 9'b0_0000_0000;
+					j_index <= 8'b0000_0000;
+					k_index <= 5'b0_0000;
+				
+					address_out <= 8'b0000_0000;
+					data_out <= 8'b0000_0000;
+					write_out <= 1'b0;
+					
+					address_ROM <= 5'b0_0000;
+					
+					address_out1 <= 5'b0_0000;
+					data_out1 <= 8'b0000_0000;
+					write_out1 <= 1'b0;
+					
+					done <= 1'b0;
+					end
+	INC1:			begin
+					state <= GETSI;
+				   i_index <= i_index + 1;
+					end
+	GETSI:		begin
+					state <= WAIT1;
+					address_out <= i_index;
+					write_out <= 1'b0;
+					end
+	WAIT1:		state <= WAIT2;
+	WAIT2:		state <= CALCJ;
+	CALCJ:		begin
+					state <= GETSJ;
+					saved_si <= mem_data;
+					j_index <= j_index + mem_data;
+					end
+	GETSJ:		begin
+					state <= WAIT3;
+					address_out <= j_index;
+					write_out <= 1'b0;
+					end
+	WAIT3:		state <= WAIT4;
+	WAIT4:		state <= SAVESJ;
+	SAVESJ:		begin
+					state <= SWAP_ItoJ;
+					saved_sj <= mem_data;
+					end
+	SWAP_ItoJ:	begin
+					state <= WAIT5;
+					address <= j_index;
+					data_out <= saved_si;
+					write_out <= 1'b1;					
+					end 
+	WAIT5:		state <= WAIT6;
+	WAIT6:		state <= WAIT7;
+	WAIT7:		state <= SWAP_JtoI;
+	SWAP_JtoI:	begin
+					state <= WAIT8;
+					address <= i_index;
+					data_out <= saved_sj;
+					write_out <= 1'b1;
+					end
+	WAIT8:		state <= WAIT9;
+	WAIT9:		state <= WAIT10;
+	WAIT10:		state <= CALCF;
+	CALCF:		begin
+					state <= XORD;
+					f <= saved_si + saved_sj;
+					end
+	XORD:			begin
+					state<
+					data_out1
+					end
